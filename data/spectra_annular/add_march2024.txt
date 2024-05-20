@@ -1,0 +1,4 @@
+spec_0932392001.fits spec_0932392101.fits
+spec_0932392001_bkg.fits spec_0932392101_bkg.fits
+spec_0932392001.arf spec_0932392101.arf
+spec_0932392001.rmf spec_0932392101.rmf
