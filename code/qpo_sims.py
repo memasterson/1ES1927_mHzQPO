@@ -72,10 +72,10 @@ plt.rcParams.update(params)
 
 # fig_path = './figures/'
 # data_path = '../data_paper2/xmm/lightcurves/'
-# save_path = '/pool001/mmasters/' # if /pool001/ is working on engaging
-save_path = './save_tmp/' # in home directory, for if /pool001/ is not working on engaging
-# mcmc_path = save_path+'broadband_mcmcs/' # if /pool001/ is working on engaging
-mcmc_path = './broadband_mcmcs_tmp/' # in home directory, for if /pool001/ is not working on engaging
+save_path = '/pool001/mmasters/' # if /pool001/ is working on engaging
+# save_path = './save_tmp/' # in home directory, for if /pool001/ is not working on engaging
+mcmc_path = save_path+'broadband_mcmcs/' # if /pool001/ is working on engaging
+# mcmc_path = './broadband_mcmcs_tmp/' # in home directory, for if /pool001/ is not working on engaging
 
 # binned FFTs
 def bin_fft_data(frequencies, power, n, statistic):
@@ -103,13 +103,9 @@ def bin_fft_data(frequencies, power, n, statistic):
 # simple power law
 def powerlaw(v, N0, b, c):
     return N0 * v**(-b) + c
-# broken power law -- low freq slope fixed at -1
-def broken_powerlaw(v, N0, c, vbend, bbend):
-    b = 1
-    return N0 * v**(-b) / (1 + (v / vbend)**(-b + bbend)) + c
 # lorentzian
 def lorentzian(v, R, delta, c):
-    return (R * delta / np.pi / (delta**2 + v**2)) + c
+    return ( 2 * R**2 * delta / np.pi / (delta**2 + v**2)) + c
 
 ########################################################################
 ############################# SET UP BAYES #############################
@@ -120,9 +116,6 @@ def log_likelihood(theta, f, y, model):
     if model == 'powerlaw':
         N0, b, c = theta
         model_y = powerlaw(f, N0, b, c)
-    elif model == 'broken_powerlaw':
-        N0, c, vbend, bbend = theta
-        model_y = broken_powerlaw(f, N0, c, vbend, bbend)
     elif model == 'lorentzian':
         R, delta, c = theta
         model_y = lorentzian(f, R, delta, c)
@@ -132,10 +125,6 @@ def log_prior(theta, model):
     if model == 'powerlaw':
         N0, b, c = theta
         if 0 < N0 < 1e10 and -5 < b < 5 and 0 < c < 100:
-            return 0.0
-    elif model == 'broken_powerlaw':
-        N0, c, vbend, bbend = theta
-        if 0 < N0 < 1e10 and 0 < c < 100 and 1e-5 < vbend < 1e-1 and -5 < bbend < 5:
             return 0.0
     elif model == 'lorentzian':
         R, delta, c = theta
@@ -278,16 +267,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         p0_pl = maxlike_pl * (1 + 1e-3 * np.random.randn(nwalkers, ndim_pl))
 
     # first maximize likelihood - broken power law
-    if use_model == 'broken_powerlaw' or use_model == 'all':
-        ndim_bpl = 4
-        initial_guess_bpl = [1e-3, 1, 2e-4, 2]
-        result_bpl = opt.minimize(log_likelihood, initial_guess_bpl, args=(freq, power, 'broken_powerlaw'),
-                                bounds=((1e-8,1e4),(1e-2,1e2),(1e-5,1e-1),(-5,5)))
-        maxlike_bpl = result_bpl.x
-        print(maxlike_bpl)
-        p0_bpl = maxlike_bpl * (1 + 1e-3 * np.random.randn(nwalkers, ndim_bpl))
-
-    # first maximize likelihood - broken power law
     if use_model == 'lorentzian' or use_model == 'all':
         ndim_lor = 3
         initial_guess_lor = [5e-1, 1e-3, 1]
@@ -302,35 +281,25 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         fig, axs = plt.subplots(figsize=(20,22), nrows=4, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3,0.3,0.3]})
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
-        ax.step(freq, power, color='k', lw=2)
-        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Power-Law')
-        ax.plot(grid, broken_powerlaw(grid, *maxlike_bpl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Broken Power-Law')
-        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='xkcd:seafoam green', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
+        ax.step(freq, power, color='k', lw=2, where='mid')
+        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Power-Law')
+        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
-        ax.axhline(1, color='slateblue', ls='--', lw=5)
-        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2)
+        ax.axhline(1, color='xkcd:peach', ls='--', lw=5)
+        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(3e-2,2e1)
         ax = axs[2]
-        ax.axhline(1, color='xkcd:peach', ls='--', lw=5)
-        ax.step(freq, power / broken_powerlaw(freq, *maxlike_bpl), color='k', lw=2)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylabel('D / M')
-        ax.set_xlabel('Frequency [Hz]')
-        ax.set_xlim(f_min, f_max)
-        ax.set_ylim(3e-2,2e1)
-        ax = axs[3]
-        ax.axhline(1, color='xkcd:seafoam green', ls='--', lw=5)
-        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2)
+        ax.axhline(1, color='slateblue', ls='--', lw=5)
+        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -342,28 +311,8 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         fig, axs = plt.subplots(figsize=(20,14), nrows=2, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3]})
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
-        ax.step(freq, power, color='k', lw=2)
-        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Power-Law')
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylabel('Periodogram')
-        ax.set_xlim(f_min, f_max)
-        ax.set_ylim(8e-2,3e2)
-        ax = axs[1]
-        ax.axhline(1, color='slateblue', ls='--', lw=5)
-        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylabel('D / M')
-        ax.set_xlim(f_min, f_max)
-        ax.set_ylim(3e-2,2e1)
-
-    if use_model == 'broken_powerlaw':
-        fig, axs = plt.subplots(figsize=(20,14), nrows=2, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3]})
-        ax = axs[0]
-        grid = np.linspace(f_min, f_max, 1000)
-        ax.step(freq, power, color='k', lw=2)
-        ax.plot(grid, broken_powerlaw(grid, *maxlike_bpl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Broken Power-Law')
+        ax.step(freq, power, color='k', lw=2, where='mid')
+        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Power-Law')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
@@ -371,11 +320,10 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
         ax.axhline(1, color='xkcd:peach', ls='--', lw=5)
-        ax.step(freq, power / broken_powerlaw(freq, *maxlike_bpl), color='k', lw=2)
+        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
-        ax.set_xlabel('Frequency [Hz]')
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(3e-2,2e1)
 
@@ -383,16 +331,16 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         fig, axs = plt.subplots(figsize=(20,14), nrows=2, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3]})
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
-        ax.step(freq, power, color='k', lw=2)
-        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='xkcd:seafoam green', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
+        ax.step(freq, power, color='k', lw=2, where='mid')
+        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
-        ax.axhline(1, color='xkcd:seafoam green', ls='--', lw=5)
-        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2)
+        ax.axhline(1, color='slateblue', ls='--', lw=5)
+        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -439,44 +387,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         # find T_SSE
         SSE_pl = np.sum(((power - med_fit_binned_pl) / med_fit_binned_pl)**2)
         print('SSE (power-law): ', SSE_pl)
-
-    if use_model == 'broken_powerlaw' or use_model == 'all':
-
-        fname = mcmc_path+'broadband_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_mcmc_broken_powerlaw.h5'
-
-        # you should have run the MCMC already
-        if os.path.exists(fname):
-            backend = emcee.backends.HDFBackend(fname, read_only=True)
-            samples_bpl = backend.get_chain(discard=nburn, flat=True)
-            Dmin_H1 = min(-backend.get_log_prob(discard=nburn, flat=True))
-        # if we haven't run the MCMC yet, you have a problem
-        else:
-            raise FileNotFoundError
-            # do not actually run the MCMC - if it can't find it you have an issue
-
-        lab = [r"$\log N_0$", r"$c$", r"$\nu_0$", r"$\alpha_h$"]
-        fig = corner.corner(samples_bpl, labels=lab, truths=maxlike_bpl, figsize=(18,18), labelpad=1)
-
-        fit_bpl = np.zeros((len(grid),n_rand))
-        fit_binned_bpl = np.zeros((len(freq),n_rand))
-        for i in range(n_rand):
-            use_N0, use_c, use_vbend, use_bbend = samples_bpl[i,:]
-            fit_bpl[:,i] = broken_powerlaw(grid, use_N0, use_c, use_vbend, use_bbend)
-            fit_binned_bpl[:,i] = broken_powerlaw(freq, use_N0, use_c, use_vbend, use_bbend)
-        med_fit_bpl = np.median(fit_bpl, axis=1)
-        med_fit_binned_bpl = np.median(fit_binned_bpl, axis=1)
-        axs[0].plot(grid, med_fit_bpl, color='darkorange', lw=5, ls='--', label='Median Broken Power-Law (MCMC)')
-
-        # find T_R
-        Rhat_bpl = 2 * power / med_fit_binned_bpl #null(bin_midpoints, *popt_null)
-        Rhat_max_bpl = np.max(Rhat_bpl)
-        QPO_freq_bpl = freq[np.argmax(Rhat_bpl)]
-        print('R (broken power-law): ', Rhat_max_bpl)
-        print('QPO freq. (broken power-law): ', QPO_freq_bpl)
-
-        # find T_SSE
-        SSE_bpl = np.sum(((power - med_fit_binned_bpl) / med_fit_binned_bpl)**2)
-        print('SSE (broken power-law): ', SSE_bpl)
 
     if use_model == 'lorentzian' or use_model == 'all':
 
@@ -532,40 +442,16 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         save_b_pl = samples_pl[:,1]
         save_c_pl = samples_pl[:,2]
 
-        # broken power law values to save
-        save_N0_bpl = samples_bpl[:,0]
-        save_c_bpl = samples_bpl[:,1]
-        save_vbend_bpl = samples_bpl[:,2]
-        save_bbend_bpl = samples_bpl[:,3]
-
         # lorentzian values to save
         save_R_lor = samples_lor[:,0]
         save_delta_lor = samples_lor[:,1]
         save_c_lor = samples_lor[:,2]
 
-        # compute the LRT for different models
-        T_LRT_bpl = Dmin_H0 - Dmin_H1
-        print('T_LRT (broken power-law vs. power-law): ', T_LRT_bpl)
-        # ndof_bpl = 1
-        # p_value_bpl = chi2.sf(T_LRT_bpl, ndof_bpl)
-        # print(p_value_bpl)
-        T_LRT_lor = Dmin_H0 - Dmin_H2
-        print('T_LRT (Lorentzian vs. power-law): ', T_LRT_lor)
-        # ndof_lor = 0
-        # p_value_lor = chi2.sf(T_LRT_lor, ndof_lor)
-        # print(p_value_lor)
-        T_LRT_lor_bpl = Dmin_H2 - Dmin_H1
-        print('T_LRT (Lorentzian vs. broken power-law): ', T_LRT_lor_bpl)
-        # p_value_lor_bpl = chi2.sf(T_LRT_lor, ndof_bpl)
-        # print(p_value_lor_bpl)
-
-        return save_N0_pl, save_b_pl, save_c_pl, Rhat_max_pl, QPO_freq_pl, SSE_pl, save_N0_bpl, save_c_bpl, save_vbend_bpl, save_bbend_bpl, Rhat_max_bpl, QPO_freq_bpl, \
-        T_LRT_bpl, SSE_bpl, save_R_lor, save_delta_lor, save_c_lor, Rhat_max_lor, QPO_freq_lor, T_LRT_lor, SSE_lor
+        return save_N0_pl, save_b_pl, save_c_pl, Rhat_max_pl, QPO_freq_pl, SSE_pl, \
+        save_R_lor, save_delta_lor, save_c_lor, Rhat_max_lor, QPO_freq_lor, SSE_lor
     
     elif use_model == 'powerlaw':
         return Rhat_max_pl, QPO_freq_pl, SSE_pl
-    elif use_model == 'broken_powerlaw':
-        return Rhat_max_bpl, QPO_freq_bpl, SSE_bpl
     elif use_model == 'lorentzian':
         return Rhat_max_lor, QPO_freq_lor, SSE_lor
     
@@ -604,9 +490,6 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     sim_spec = rand_re + 1j * rand_im
     if psd_model == 'powerlaw':
         psd_shape = powerlaw(pos_freqs, psd_params[0], psd_params[1], 0)
-    elif psd_model == 'broken_powerlaw':
-        # psd_shape = broken_powerlaw(pos_freqs, psd_params[0], psd_params[1], 0, psd_params[3], psd_params[4])
-        psd_shape = broken_powerlaw(pos_freqs, psd_params[0], 0, psd_params[2], psd_params[3])
     elif psd_model == 'lorentzian':
         psd_shape = lorentzian(pos_freqs, psd_params[0], psd_params[1], 0)
     sim_spec = sim_spec * np.sqrt(0.5 * psd_shape) # for a more general power spectrum
@@ -627,10 +510,7 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     light_curve = (light_curve - mean_sim) + mean_obs 
 
     # add noise, based on the sqrt of the constant white noise component from the original fit to the PSD
-    if psd_model == 'broken_powerlaw':
-        noise_max = np.sqrt(psd_params[1] / (2 * tbin)) # need to account for the power / freq, i.e. multiply by the nyquist freq
-    else:
-        noise_max = np.sqrt(psd_params[2] / (2 * tbin)) # need to account for the power / freq, i.e. multiply by the nyquist freq
+    noise_max = np.sqrt(psd_params[2] / (2 * tbin)) # need to account for the power / freq, i.e. multiply by the nyquist freq
     noise = np.random.normal(0, noise_max, size=len(light_curve))
     light_curve = light_curve + noise
 
@@ -700,11 +580,6 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
         if psd_model == 'powerlaw':
             psd_input = powerlaw(freq_grid, psd_params[0], psd_params[1], 0)
             psd_total = powerlaw(freq_grid, *psd_params)
-        elif psd_model == 'broken_powerlaw':
-            # psd_input = broken_powerlaw(freq_grid, psd_params[0], psd_params[1], 0, psd_params[3], psd_params[4])
-            # psd_total = broken_powerlaw(freq_grid, *psd_params)
-            psd_input = broken_powerlaw(freq_grid, psd_params[0], 0, psd_params[2], psd_params[3])
-            psd_total = broken_powerlaw(freq_grid, *psd_params)
         elif psd_model == 'lorentzian':
             psd_input = lorentzian(freq_grid, psd_params[0], psd_params[1], 0)
             psd_total = lorentzian(freq_grid, *psd_params)
@@ -722,9 +597,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
            nwalkers=32, nsteps=5500, nburn=500, plot=False, maxlike_init=True):
 
     # MLE 
-    ndim = len(psd_params) # should work for either power law or broken power law model
-    if psd_model == 'broken_powerlaw':
-        bounds = ((0,1e4),(0,1e2),(1e-5,1e-1),(-4,4))
+    ndim = len(psd_params) # should work for either power law or lorentzian model
     if psd_model == 'powerlaw':
         bounds = ((0,1e4),(0,5),(0,1e2))
         bounds_start = ((0,0.2),(0,2),(0,1))
@@ -758,10 +631,6 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
             use_N0, use_b, use_c, = samples[i,:]
             fit[:,i] = powerlaw(grid, use_N0, use_b, use_c)
             fit_binned[:,i] = powerlaw(freq, use_N0, use_b, use_c)
-        if psd_model == 'broken_powerlaw':
-            use_N0, use_c, use_vbend, use_bbend = samples[i,:]
-            fit[:,i] = broken_powerlaw(grid, use_N0, use_c, use_vbend, use_bbend)
-            fit_binned[:,i] = broken_powerlaw(freq, use_N0, use_c, use_vbend, use_bbend)
         if psd_model == 'lorentzian':
             use_R, use_delta, use_c = samples[i,:]
             fit[:,i] = lorentzian(grid, use_R, use_delta, use_c)
@@ -811,8 +680,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
 def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_sim=100, n_jobs=16, psd_model='broken_powerlaw', maxlike_init=True):
 
     # get the necessary parameters from the MCMC
-    save_N0_pl, save_b_pl, save_c_pl, Rhat_max_pl, QPO_freq_pl, SSE_pl, save_N0_bpl, save_c_bpl, save_vbend_bpl, save_bbend_bpl, Rhat_max_bpl, QPO_freq_bpl, \
-        T_LRT_bpl, SSE_bpl, save_R_lor, save_delta_lor, save_c_lor, Rhat_max_lor, QPO_freq_lor, T_LRT_lor, SSE_lor = \
+    save_N0_pl, save_b_pl, save_c_pl, Rhat_max_pl, QPO_freq_pl, SSE_pl, save_R_lor, save_delta_lor, save_c_lor, Rhat_max_lor, QPO_freq_lor, SSE_lor = \
             MLE_and_MCMC(obs, data_path, emin, emax, tbin, n, nsteps=55000, nburn=5000)
     N, mean, rms = get_key_values(obs, data_path, emin, emax, tbin)
     dur = tbin * N
@@ -821,9 +689,6 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
     if psd_model == 'powerlaw':
         Rhat_comp = Rhat_max_pl
         SSE_comp = SSE_pl
-    elif psd_model == 'broken_powerlaw':
-        Rhat_comp = Rhat_max_bpl
-        SSE_comp = SSE_bpl
     elif psd_model == 'lorentzian':
         Rhat_comp = Rhat_max_lor
         SSE_comp = SSE_lor
@@ -836,15 +701,6 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
             sim_b = save_b_pl[rand_int]
             sim_c = save_c_pl[rand_int]
             psd_params = [sim_N0, sim_b, sim_c]
-        if psd_model == 'broken_powerlaw':
-            rand_int = np.random.randint(0,len(save_N0_bpl))
-            sim_N0 = save_N0_bpl[rand_int]
-            # sim_b = save_b_bpl[rand_int]
-            sim_c = save_c_bpl[rand_int]
-            sim_vbend = save_vbend_bpl[rand_int]
-            sim_bbend = save_bbend_bpl[rand_int]
-            # psd_params = [sim_N0, sim_b, sim_c, sim_vbend, sim_bbend]
-            psd_params = [sim_N0, sim_c, sim_vbend, sim_bbend]
         if psd_model == 'lorentzian':
             rand_int = np.random.randint(0,len(save_R_lor))
             sim_R = save_R_lor[rand_int]
@@ -888,7 +744,7 @@ if __name__ == "__main__":
     parser.add_argument('--n', type=int, default=0, help='Number of bins for the power spectrum (default: 0)')
     parser.add_argument('--n_sim', type=int, default=10000, help='Number of simulations (default: 10000)')
     parser.add_argument('--n_jobs', type=int, default=100, help='Number of parallel jobs (default: 100)')
-    parser.add_argument('--psd_model', type=str, default='broken_powerlaw', help='PSD model (default: broken_powerlaw)')
+    parser.add_argument('--psd_model', type=str, default='powerlaw', help='PSD model (default: powerlaw). Only acceptable objects are powerlaw and lorentzian.')
     parser.add_argument('--maxlike_init', type=str, default='True', help='Whether to initialize MCMC walkers with maximum likelihood estimate (default: True)')
 
     # Parse arguments
