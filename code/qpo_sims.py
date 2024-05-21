@@ -593,8 +593,8 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
     else:
         return freq, power, freq_err, power_err
     
-def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power_err=None, psd_model='broken_powerlaw', psd_params=[1e-2, 2, 1, 1e-4, -1], 
-           nwalkers=32, nsteps=5500, nburn=500, plot=False, maxlike_init=True):
+def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power_err=None, psd_model='powerlaw', psd_params=[1e-2, 1, 1], 
+           nwalkers=32, nsteps=5500, nburn=500, plot=False, maxlike_init=True, SSE_input=0):
 
     # MLE 
     ndim = len(psd_params) # should work for either power law or lorentzian model
@@ -608,7 +608,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
     if maxlike_init:
         p0 = maxlike * (1 + 1e-3 * np.random.randn(nwalkers, ndim))
     else:
-        # use parameter bounds and create a uniformly sampled set of walkers to start
+        # use parameter bounds and create a uniformly sampled set of walkers to start, if not running with MLE to start
         p0 = np.random.rand(nwalkers, ndim)  # random values in [0, 1)
         for i in range(ndim):
             p0[:,i] = p0[:,i] * (bounds_start[i][1] - bounds_start[i][0]) + bounds_start[i][0]  # scale and shift to parameter bounds
@@ -645,7 +645,8 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
     # find T_SSE
     SSE_TK = np.sum(((power - med_fit_binned) / med_fit_binned)**2)
 
-    if plot:
+    # only plot if this is a "bad" fit -- i.e. if this simulated PSD gives a worse SSE than what we found for the observed data
+    if plot and (SSE_TK > SSE_input):
 
         if not os.path.exists(save_path+'save_TK_fits/'):
             os.mkdir(save_path+'save_TK_fits/')
@@ -711,7 +712,7 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
         # run simulation and fit the new psd
         lc = timmerkonig_sims(dur, tbin, psd_model, psd_params, mean, rms)
         freq, power = make_TK_psd(lc, tbin, psd_model, psd_params, plot=False)
-        Rhat_TK, SSE_TK = fit_TK(i, taskid, obs, emin, emax, tbin, freq, power, psd_model=psd_model, psd_params=psd_params, plot=True, maxlike_init=maxlike_init)
+        Rhat_TK, SSE_TK = fit_TK(i, taskid, obs, emin, emax, tbin, freq, power, psd_model=psd_model, psd_params=psd_params, plot=True, maxlike_init=maxlike_init, SSE_input=SSE_comp)
 
         return Rhat_TK, SSE_TK
 
