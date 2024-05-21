@@ -278,7 +278,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
 
     # not in log space
     if use_model == 'all':
-        fig, axs = plt.subplots(figsize=(20,22), nrows=4, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3,0.3,0.3]})
+        fig, axs = plt.subplots(figsize=(20,22), nrows=3, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3,0.3]})
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
         ax.step(freq, power, color='k', lw=2, where='mid')
