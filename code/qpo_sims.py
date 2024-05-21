@@ -276,7 +276,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         print(maxlike_lor)
         p0_lor = maxlike_lor * (1 + 1e-3 * np.random.randn(nwalkers, ndim_lor))
 
-    # not in log space
+    # make a nice figure showing the fits and residuals for both models
     if use_model == 'all':
         fig, axs = plt.subplots(figsize=(20,22), nrows=3, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3,0.3]})
         ax = axs[0]
@@ -307,6 +307,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(3e-2,2e1)
 
+    # make a nice figure showing the fits and residuals for power-law model
     if use_model == 'powerlaw':
         fig, axs = plt.subplots(figsize=(20,14), nrows=2, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3]})
         ax = axs[0]
@@ -327,6 +328,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_xlim(f_min, f_max)
         ax.set_ylim(3e-2,2e1)
 
+    # make a nice figure showing the fits and residuals for lorentzian model
     if use_model == 'lorentzian':
         fig, axs = plt.subplots(figsize=(20,14), nrows=2, gridspec_kw={'hspace':0, 'height_ratios':[1,0.3]})
         ax = axs[0]
@@ -352,9 +354,10 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
     n_rand = 100
     if use_model == 'powerlaw' or use_model == 'all':
 
+        # mcmc file name (should have been run in broadband.ipynb)
         fname = mcmc_path+'broadband_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_mcmc_powerlaw.h5'
 
-        # you should have run the MCMC already
+        # you should have run the MCMC already - load it in here
         if os.path.exists(fname):
             backend = emcee.backends.HDFBackend(fname, read_only=True)
             samples_pl = backend.get_chain(discard=nburn, flat=True)
@@ -364,9 +367,11 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
             raise FileNotFoundError
             # do not actually run the MCMC - if it can't find it you have an issue
 
+        # make a quick corner plot to check
         lab = [r"$\log N_0$", r"$\alpha$", r"$c$"]
         fig = corner.corner(samples_pl, labels=lab, truths=maxlike_pl, figsize=(18,18), labelpad=1)
 
+        # grab best fit MCMC
         fit_pl = np.zeros((len(grid),n_rand))
         fit_binned_pl = np.zeros((len(freq),n_rand))
         for i in range(n_rand):
@@ -390,9 +395,10 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
 
     if use_model == 'lorentzian' or use_model == 'all':
 
+        # mcmc file name (should have been run in broadband.ipynb)
         fname = mcmc_path+'broadband_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_mcmc_lorentzian.h5'
 
-        # you should have run the MCMC already
+        # you should have run the MCMC already - load it in here
         if os.path.exists(fname):
             backend = emcee.backends.HDFBackend(fname, read_only=True)
             samples_lor = backend.get_chain(discard=nburn, flat=True)
@@ -408,9 +414,11 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
             # samples_lor = sampler_lor.get_chain(discard=nburn, flat=True)
             # Dmin_H2 = min(-sampler_lor.get_log_prob(discard=nburn, flat=True)) 
 
+        # make a quick corner plot to check
         lab = [r"$R$", r"$\Delta$", r"$c$"]
         fig = corner.corner(samples_lor, labels=lab, truths=maxlike_lor, figsize=(18,18), labelpad=1)
 
+        # grab best fit MCMC
         fit_lor = np.zeros((len(grid),n_rand))
         fit_binned_lor = np.zeros((len(freq),n_rand))
         for i in range(n_rand):
@@ -475,10 +483,10 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     Returns:
     np.array: Simulated light curve.
     """
-    # Number of samples
+    # number of samples
     N = int(duration / tbin)
 
-    # Frequency array
+    # frequency array
     all_freqs = np.fft.fftfreq(N, d=tbin)
     pos_freqs = all_freqs[all_freqs > 0] # exclude 0
 
@@ -503,7 +511,7 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     # inverse FFT to get the time series
     light_curve = np.fft.irfft(full_spec, n=N)
 
-    # # scale to the observations
+    # scale to the observations
     mean_sim = np.mean(light_curve)
     rms_sim = np.sqrt(np.sum((light_curve - mean_sim)**2) / (N - 1))
     light_curve = light_curve * rms_obs / rms_sim # scale the rms
@@ -553,6 +561,7 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
     y = y[1:]
 
     if n == 0:
+        # there will be no error bars on the data
         freq, power = x, y
 
     else:
@@ -596,7 +605,7 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
 def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power_err=None, psd_model='powerlaw', psd_params=[1e-2, 1, 1], 
            nwalkers=32, nsteps=5500, nburn=500, plot=False, maxlike_init=True, SSE_input=0):
 
-    # MLE 
+    # perform MLE 
     ndim = len(psd_params) # should work for either power law or lorentzian model
     if psd_model == 'powerlaw':
         bounds = ((0,1e4),(0,5),(0,1e2))
@@ -622,7 +631,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
     f_max = max(freq)
     grid = np.linspace(f_min, f_max, 1000)
     
-    # grab n_rand samples and pick out the median fit
+    # grab n_rand samples and pick out the median fit from the MCMC
     n_rand = 100
     fit = np.zeros((len(grid),n_rand))
     fit_binned = np.zeros((len(freq),n_rand))
@@ -694,6 +703,7 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
         Rhat_comp = Rhat_max_lor
         SSE_comp = SSE_lor
 
+    # function to perform a TK simulation, fit it, and compare statistics - this is what will be run in parallel
     def run_parallel(i):
 
         if psd_model == 'powerlaw':
@@ -716,13 +726,16 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
 
         return Rhat_TK, SSE_TK
 
+    # run the above function in parallel with n_jobs
     results = Parallel(n_jobs=n_jobs)(delayed(run_parallel)(i) for i in range(n_sim))
     Rhat_TK = [x[0] for x in results]
     SSE_TK = [x[1] for x in results]
 
+    # create directory in which to save results
     if not os.path.exists(save_path+'TK_results/'):
         os.mkdir(save_path+'TK_results/')
 
+    # save the results
     np.save(save_path+'TK_results/Rhat_TK_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(taskid)+'.npy', Rhat_TK)
     np.save(save_path+'TK_results/SSE_TK_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(taskid)+'.npy', SSE_TK)
     n_fd = len(np.where(Rhat_TK > Rhat_comp)[0])
@@ -733,10 +746,10 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
 
 if __name__ == "__main__":
 
-    # Initialize parser
+    # initialize parser
     parser = argparse.ArgumentParser(description='Run TK simulations and analysis.')
 
-    # Adding arguments
+    # add arguments
     parser.add_argument('--obsid', type=str, help='Observation ID')
     parser.add_argument('--data_path', type=str, help='Path to the data directory')
     parser.add_argument('--emin', type=float, default=1, help='Minimum energy of the band you are considering (default: 1)')
@@ -748,15 +761,16 @@ if __name__ == "__main__":
     parser.add_argument('--psd_model', type=str, default='powerlaw', help='PSD model (default: powerlaw). Only acceptable objects are powerlaw and lorentzian.')
     parser.add_argument('--maxlike_init', type=str, default='True', help='Whether to initialize MCMC walkers with maximum likelihood estimate (default: True)')
 
-    # Parse arguments
+    # parse arguments
     args = parser.parse_args()
 
+    # whether or not to start from the maximum likelihood estimate (for some reason this can be problematic for the power-law)
     if args.maxlike_init == 'False' or args.maxlike_init == '0' or args.maxlike_init == 'F':
         mli = False
     else:
         mli = True
 
-    # Call the function with parsed arguments
-    task_id = int(os.getenv('SLURM_ARRAY_TASK_ID', '0'))
+    # call the function with parsed arguments
+    task_id = int(os.getenv('SLURM_ARRAY_TASK_ID', '0')) # this is just a # that the code will use to name things
     run_TK_sims_and_analysis(taskid=task_id, obs=args.obsid, data_path=args.data_path, emin=args.emin, emax=args.emax, tbin=args.tbin, n=args.n, 
                              n_sim=args.n_sim, n_jobs=args.n_jobs, psd_model=args.psd_model, maxlike_init=mli)
