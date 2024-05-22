@@ -79,19 +79,11 @@ mcmc_path = save_path+'broadband_mcmcs/' # if /pool001/ is working on engaging
 
 # binned FFTs
 def bin_fft_data(frequencies, power, n, statistic):
-    """
-    Bin the frequency and power data from FFT output.
 
-    :param frequencies: Array of frequency values from FFT.
-    :param power: Array of power values corresponding to each frequency.
-    :param n: Number of points in each bin.
-    :param statistic: Statistic to calculate ('mean' or 'std').
-    :return: Bin edges and calculated statistic for each bin.
-    """
-    # Calculate the number of bins
+    # calculate the number of bins
     num_bins = len(frequencies) // n
 
-    # Use binned_statistic to calculate the desired statistic for power
+    # use binned_statistic to calculate the desired statistic for power
     bin_statistic, bin_edges, _ = binned_statistic(frequencies, power, statistic=statistic, bins=num_bins)
 
     return bin_edges, bin_statistic
@@ -468,21 +460,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
 ########################################################################
     
 def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, plot=False):
-    """
-    Simulate a light curve with power-law noise from the methodology outlined in Timmer & Konig (1995).
 
-    Parameters:
-    duration (float): Total duration of the light curve in seconds.
-    tbin (float): Time binning (sampling interval) in seconds.
-    psd_model (str): Model to use for the PSD.
-    psd_params (array): Array of model parameters to pass to the PSD.
-    mean_obs (float): mean rate of the observed data to match simulations to
-    rms_obs (float): rms of the observed data to match simulations to
-    plot (bool): whether or not to plot the resulting light curve
-
-    Returns:
-    np.array: Simulated light curve.
-    """
     # number of samples
     N = int(duration / tbin)
 
@@ -661,7 +639,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
             os.mkdir(save_path+'save_TK_fits/')
 
         # not in log space
-        fig, ax = plt.subplots(figsize=(10,10))
+        fig, ax = plt.subplots()
         ax.plot(grid, med_fit, color='dodgerblue', lw=5, ls='--', label='Median Fit from MCMC')
         if not freq_err is None:
             ax.errorbar(freq, power, xerr=freq_err, yerr=power_err, fmt='o', ms=0, color='k', capsize=0, label='Simulated Data')
@@ -671,19 +649,19 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
         ax.set_yscale('log')
         ax.set_xlabel('Frequency [Hz]')
         ax.set_ylabel('Periodogram')
-        ax.legend(fontsize=24)
-        plt.savefig(save_path+'save_TK_fits/mcmc_fit_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight')
-        plt.close()
+        ax.legend()
+        plt.savefig(save_path+'save_TK_fits/mcmc_fit_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight', dpi=50)
+        plt.close(fig)
 
         # not in log space
-        fig, axs = plt.subplots(nrows=ndim, figsize=(10,15), gridspec_kw={'hspace':0, 'wspace':0})
+        fig, axs = plt.subplots(nrows=ndim, gridspec_kw={'hspace':0, 'wspace':0})
         for i in range(ndim):
             ax = axs[i]
             ax.plot(np.linspace(0,len(samples[:,i]),len(samples[:,i])), samples[:,i], 'k-', lw=0.1)
             if i == (ndim-1):
                 ax.set_xlabel('Steps')
-        plt.savefig(save_path+'save_TK_fits/mcmc_convergence_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight')
-        plt.close()
+        plt.savefig(save_path+'save_TK_fits/mcmc_convergence_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight', dpi=50)
+        plt.close(fig)
 
     return Rhat_max_TK, SSE_TK
 
