@@ -157,6 +157,8 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
         err = np.array([])
         tstarts = np.array([])
         
+        avg_powers = None
+        
         # loop over all obs
         for i,obsid in enumerate(obs):
 
@@ -164,18 +166,29 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
             hdu = fits.open(data_path+lc_file)
             data = hdu[1].data
             data = data[~np.isnan(data['RATE'])]
+            true_time_tmp = data['TIME']
             time_tmp = data['TIME']-data['TIME'][0]
+            rate_tmp = data['RATE']
+            err_tmp = data['ERROR']
+
+            # save last time so we can add it to the time array
             if i == 0:
                 t0 = 0
             else:
                 t0 = time[-1]
+
+            if tmax is not None:
+                use = time_tmp < tmax
+                rate_tmp = rate_tmp[use]
+                err_tmp = err_tmp[use]
+                time_tmp = time_tmp[use]
+                true_time_tmp = true_time_tmp[use]
+
             tstarts = np.append(tstarts, t0)
             time = np.append(time, time_tmp+t0)
-            rate_tmp = data['RATE']
             rate = np.append(rate, rate_tmp)
-            err_tmp = data['ERROR']
             err = np.append(err, err_tmp)
-            true_time = np.append(true_time, data['TIME'])
+            true_time = np.append(true_time, true_time_tmp)
 
             if np.where(np.diff(time_tmp) != tbin)[0].size != 0:
                 print('FOR OBSID '+obsid+': YOU HAVE A SERIOUS PROBLEM. YOUR DATA IS NOT CONTINUOUS. YOU ARE LINEARLY INTERPOLATING THE GAPS. MAKE SURE THAT THESE ARE NOT TOO LONG.')
@@ -197,14 +210,32 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
             freqs = np.concatenate((freqs, x))
             powers = np.concatenate((powers, y))
 
-        # bin the data once we've looped over all obs
-        mean_bin_edges, mean_bin_values = bin_fft_data(freqs, powers, n, 'mean')
-        std_bin_edges, std_bin_values = bin_fft_data(freqs, powers, n, 'std') 
-        std_bin_values = std_bin_values / np.sqrt(n)
-        bin_midpoints = 0.5 * (mean_bin_edges[1:] + mean_bin_edges[:-1])
-        bin_widths = 0.5 * (mean_bin_edges[1:] - mean_bin_edges[:-1])
-        freq, power, freq_err, power_err = bin_midpoints, mean_bin_values, bin_widths, std_bin_values
+            if tmax is not None:
+                if avg_powers is None:
+                    avg_powers = np.zeros(len(powers))
+                    avg_freqs = x
+                avg_powers += y
 
+        # if tmax is not None, then we want to average at each frequency point (the individual obs should have the same frequency arrays)
+        if tmax is not None:
+            avg_powers = avg_powers / len(obs)
+            # bin the data once we've looped over all obs
+            mean_bin_edges, mean_bin_values = bin_fft_data(avg_freqs, avg_powers, n, 'mean')
+            std_bin_edges, std_bin_values = bin_fft_data(avg_freqs, avg_powers, n, 'std') 
+            std_bin_values = std_bin_values / np.sqrt(n * len(obs))
+            bin_midpoints = 0.5 * (mean_bin_edges[1:] + mean_bin_edges[:-1])
+            bin_widths = 0.5 * (mean_bin_edges[1:] - mean_bin_edges[:-1])
+            freq, power, freq_err, power_err = bin_midpoints, mean_bin_values, bin_widths, std_bin_values
+
+        else:
+            # bin the data once we've looped over all obs
+            mean_bin_edges, mean_bin_values = bin_fft_data(freqs, powers, n, 'mean')
+            std_bin_edges, std_bin_values = bin_fft_data(freqs, powers, n, 'std') 
+            std_bin_values = std_bin_values / np.sqrt(n)
+            bin_midpoints = 0.5 * (mean_bin_edges[1:] + mean_bin_edges[:-1])
+            bin_widths = 0.5 * (mean_bin_edges[1:] - mean_bin_edges[:-1])
+            freq, power, freq_err, power_err = bin_midpoints, mean_bin_values, bin_widths, std_bin_values
+            
         # compute min and max frequency now that we've done the binning
         f_min = freq[0] - freq_err[0]
         f_max = freq[-1] + freq_err[-1]
