@@ -111,7 +111,7 @@ def log_likelihood(theta, f, y, model):
     elif model == 'lorentzian':
         R, delta, c = theta
         model_y = lorentzian(f, R, delta, c)
-    return 2 * np.sum((y / model_y) + np.log(model_y))
+    return np.sum((y / model_y) + np.log(model_y))
 
 def log_prior(theta, model):
     if model == 'powerlaw':
