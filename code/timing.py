@@ -256,7 +256,7 @@ def make_MOS_psd(obs, data_path, emin, emax, tbin=20, n=10):
         err = data['ERROR']
 
         if np.where(np.diff(time) != tbin)[0].size != 0:
-            print('YOU HAVE A SERIOUS PROBLEM. YOUR DATA IS NOT CONTINUOUS. YOU ARE LINEARLY INTERPOLATING THE GAPS. MAKE SURE THAT THESE ARE NOT TOO LONG.')
+            print('heads up -- your data is not continuous and you are linearly interpolating the gaps. make sure that these gaps are not too long.')
 
         # maximum frequency that can be probed = nyquist = 1 / (2 * tbin)
         f_max = 1 / (2 * tbin)

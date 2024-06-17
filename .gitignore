@@ -1,6 +1,6 @@
-code/broadband_mcmcs/
-code/qpo_mcmcs/
-code/TK_results/
-code/TK_sims.ipynb
+code/broadband_mcmcs/*.h5
+code/qpo_mcmcs/*.h5
+code/TK_results/09*/
 .DS_Store
-mmasters@*
+*/mmasters@*
+paper/
