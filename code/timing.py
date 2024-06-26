@@ -1,4 +1,5 @@
 # python file with functions to do timing analysis on 1ES 1927+654
+# this file contains various functions for making and fitting PSDs that are used in the rest of the code
 
 # load packages
 import numpy as np 
@@ -72,19 +73,11 @@ plt.rcParams.update(params)
 
 # function to bin up FFTs based on a certain number of frequencies per bin
 def bin_fft_data(frequencies, power, n, statistic):
-    """
-    Bin the frequency and power data from FFT output.
-
-    :param frequencies: Array of frequency values from FFT.
-    :param power: Array of power values corresponding to each frequency.
-    :param n: Number of points in each bin.
-    :param statistic: Statistic to calculate ('mean' or 'std').
-    :return: Bin edges and calculated statistic for each bin.
-    """
-    # Calculate the number of bins
+    
+    # calculate the number of bins
     num_bins = len(frequencies) // n
 
-    # Use binned_statistic to calculate the desired statistic for power
+    # use binned_statistic to calculate the desired statistic for power
     bin_statistic, bin_edges, _ = binned_statistic(frequencies, power, statistic=statistic, bins=num_bins)
 
     return bin_edges, bin_statistic
@@ -115,7 +108,7 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
             time = time[use]
 
         if np.where(np.diff(time) != tbin)[0].size != 0:
-            print('YOU HAVE A SERIOUS PROBLEM. YOUR DATA IS NOT CONTINUOUS. YOU ARE LINEARLY INTERPOLATING THE GAPS. MAKE SURE THAT THESE ARE NOT TOO LONG.')
+            print('heads up -- your data is not continuous and you are linearly interpolating the gaps. make sure that these gaps are not too long.')
 
         # maximum frequency that can be probed = nyquist = 1 / (2 * tbin)
         f_max = 1 / (2 * tbin)
@@ -191,7 +184,7 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
             true_time = np.append(true_time, true_time_tmp)
 
             if np.where(np.diff(time_tmp) != tbin)[0].size != 0:
-                print('FOR OBSID '+obsid+': YOU HAVE A SERIOUS PROBLEM. YOUR DATA IS NOT CONTINUOUS. YOU ARE LINEARLY INTERPOLATING THE GAPS. MAKE SURE THAT THESE ARE NOT TOO LONG.')
+                print('for obsid '+obsid+': heads up -- your data is not continuous and you are linearly interpolating the gaps. make sure that these gaps are not too long.')
 
             # maximum frequency that can be probed = nyquist = 1 / (2 * tbin)
             f_max = 1 / (2 * tbin)
@@ -319,7 +312,7 @@ def make_MOS_psd(obs, data_path, emin, emax, tbin=20, n=10):
             true_time = np.append(true_time, data['TIME'])
 
             if np.where(np.diff(time_tmp) != tbin)[0].size != 0:
-                print('FOR OBSID '+obsid+': YOU HAVE A SERIOUS PROBLEM. YOUR DATA IS NOT CONTINUOUS. YOU ARE LINEARLY INTERPOLATING THE GAPS. MAKE SURE THAT THESE ARE NOT TOO LONG.')
+                print('for obsid '+obsid+': heads up -- your data is not continuous and you are linearly interpolating the gaps. make sure that these gaps are not too long.')
 
             # maximum frequency that can be probed = nyquist = 1 / (2 * tbin)
             f_max = 1 / (2 * tbin)
