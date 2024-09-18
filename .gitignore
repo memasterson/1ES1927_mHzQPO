@@ -1,3 +1,7 @@
-code/broadband_mcmcs/
-code/qpo_mcmcs/
-code/TK_results/
+code/broadband_mcmcs/*.h5
+code/qpo_mcmcs/*.h5
+code/TK_results/09*/
+.DS_Store
+*/mmasters@*
+paper/
+README.txt

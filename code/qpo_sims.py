@@ -72,26 +72,18 @@ plt.rcParams.update(params)
 
 # fig_path = './figures/'
 # data_path = '../data_paper2/xmm/lightcurves/'
-save_path = '/pool001/mmasters/' # if /pool001/ is working on engaging
-# save_path = './save_tmp/' # in home directory, for if /pool001/ is not working on engaging
-mcmc_path = save_path+'broadband_mcmcs/' # if /pool001/ is working on engaging
-# mcmc_path = './broadband_mcmcs_tmp/' # in home directory, for if /pool001/ is not working on engaging
+# save_path = '/pool001/mmasters/' # if /pool001/ is working on engaging
+save_path = './save_tmp/' # in home directory, for if /pool001/ is not working on engaging
+# mcmc_path = save_path+'broadband_mcmcs/' # if /pool001/ is working on engaging
+mcmc_path = './broadband_mcmcs_tmp/' # in home directory, for if /pool001/ is not working on engaging
 
 # binned FFTs
 def bin_fft_data(frequencies, power, n, statistic):
-    """
-    Bin the frequency and power data from FFT output.
 
-    :param frequencies: Array of frequency values from FFT.
-    :param power: Array of power values corresponding to each frequency.
-    :param n: Number of points in each bin.
-    :param statistic: Statistic to calculate ('mean' or 'std').
-    :return: Bin edges and calculated statistic for each bin.
-    """
-    # Calculate the number of bins
+    # calculate the number of bins
     num_bins = len(frequencies) // n
 
-    # Use binned_statistic to calculate the desired statistic for power
+    # use binned_statistic to calculate the desired statistic for power
     bin_statistic, bin_edges, _ = binned_statistic(frequencies, power, statistic=statistic, bins=num_bins)
 
     return bin_edges, bin_statistic
@@ -119,7 +111,7 @@ def log_likelihood(theta, f, y, model):
     elif model == 'lorentzian':
         R, delta, c = theta
         model_y = lorentzian(f, R, delta, c)
-    return 2 * np.sum((y / model_y) + np.log(model_y))
+    return np.sum((y / model_y) + np.log(model_y))
 
 def log_prior(theta, model):
     if model == 'powerlaw':
@@ -263,7 +255,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         result_pl = opt.minimize(log_likelihood, initial_guess_pl, args=(freq, power, 'powerlaw'),
                                 bounds=((1e-8,1e4),(-2,2),(1e-2,1e2)))
         maxlike_pl = result_pl.x
-        print(maxlike_pl)
         p0_pl = maxlike_pl * (1 + 1e-3 * np.random.randn(nwalkers, ndim_pl))
 
     # first maximize likelihood - broken power law
@@ -273,7 +264,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         result_lor = opt.minimize(log_likelihood, initial_guess_lor, args=(freq, power, 'lorentzian'),
                                   bounds=((0,100),(1e-6,1),(1e-4,100)))
         maxlike_lor = result_lor.x
-        print(maxlike_lor)
         p0_lor = maxlike_lor * (1 + 1e-3 * np.random.randn(nwalkers, ndim_lor))
 
     # make a nice figure showing the fits and residuals for both models
@@ -282,8 +272,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
         ax.step(freq, power, color='k', lw=2, where='mid')
-        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Power-Law')
-        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
@@ -291,7 +279,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
         ax.axhline(1, color='xkcd:peach', ls='--', lw=5)
-        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -299,7 +286,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(3e-2,2e1)
         ax = axs[2]
         ax.axhline(1, color='slateblue', ls='--', lw=5)
-        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -313,7 +299,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
         ax.step(freq, power, color='k', lw=2, where='mid')
-        ax.plot(grid, powerlaw(grid, *maxlike_pl), color='xkcd:peach', lw=5, ls='--', label='Maximum Likelihood Power-Law')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
@@ -321,7 +306,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
         ax.axhline(1, color='xkcd:peach', ls='--', lw=5)
-        ax.step(freq, power / powerlaw(freq, *maxlike_pl), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -334,7 +318,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax = axs[0]
         grid = np.linspace(f_min, f_max, 1000)
         ax.step(freq, power, color='k', lw=2, where='mid')
-        ax.plot(grid, lorentzian(grid, *maxlike_lor), color='slateblue', lw=5, ls='--', label='Maximum Likelihood Lorentzian')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Periodogram')
@@ -342,7 +325,6 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(8e-2,3e2)
         ax = axs[1]
         ax.axhline(1, color='slateblue', ls='--', lw=5)
-        ax.step(freq, power / lorentzian(freq, *maxlike_lor), color='k', lw=2, where='mid')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('D / M')
@@ -351,7 +333,7 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         ax.set_ylim(3e-2,2e1)
 
     # grab n_rand samples and pick out the median fit
-    n_rand = 100
+    n_rand = 10000
     if use_model == 'powerlaw' or use_model == 'all':
 
         # mcmc file name (should have been run in broadband.ipynb)
@@ -372,15 +354,18 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         fig = corner.corner(samples_pl, labels=lab, truths=maxlike_pl, figsize=(18,18), labelpad=1)
 
         # grab best fit MCMC
+        rand_ints = np.random.randint(low=0, high=len(samples_pl[:,0]), size=n_rand)
         fit_pl = np.zeros((len(grid),n_rand))
         fit_binned_pl = np.zeros((len(freq),n_rand))
         for i in range(n_rand):
-            use_N0, use_b, use_c = samples_pl[i,:]
+            j = rand_ints[i]
+            use_N0, use_b, use_c = samples_pl[j,:]
             fit_pl[:,i] = powerlaw(grid, use_N0, use_b, use_c)
             fit_binned_pl[:,i] = powerlaw(freq, use_N0, use_b, use_c)
         med_fit_pl = np.median(fit_pl, axis=1)
         med_fit_binned_pl = np.median(fit_binned_pl, axis=1)
         axs[0].plot(grid, med_fit_pl, color='darkblue', lw=5, ls='--', label='Median Power-Law (MCMC)')
+        axs[1].step(freq, power / med_fit_binned_pl, color='k', lw=2, where='mid')
 
         # find T_R
         Rhat_pl = 2 * power / med_fit_binned_pl #null(bin_midpoints, *popt_null)
@@ -419,15 +404,18 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
         fig = corner.corner(samples_lor, labels=lab, truths=maxlike_lor, figsize=(18,18), labelpad=1)
 
         # grab best fit MCMC
+        rand_ints = np.random.randint(low=0, high=len(samples_lor[:,0]), size=n_rand)
         fit_lor = np.zeros((len(grid),n_rand))
         fit_binned_lor = np.zeros((len(freq),n_rand))
         for i in range(n_rand):
-            use_R, use_delta, use_c = samples_lor[i,:]
+            j = rand_ints[i]
+            use_R, use_delta, use_c = samples_lor[j,:]
             fit_lor[:,i] = lorentzian(grid, use_R, use_delta, use_c)
             fit_binned_lor[:,i] = lorentzian(freq, use_R, use_delta, use_c)
         med_fit_lor = np.median(fit_lor, axis=1)
         med_fit_binned_lor = np.median(fit_binned_lor, axis=1)
         axs[0].plot(grid, med_fit_lor, color='mediumseagreen', lw=5, ls='--', label='Median Lorentzian (MCMC)')
+        axs[1].step(freq, power / med_fit_binned_lor, color='k', lw=2, where='mid')
 
         # find T_R
         Rhat_lor = 2 * power / med_fit_binned_lor 
@@ -467,22 +455,8 @@ def MLE_and_MCMC(obs, data_path, emin, emax, tbin=20, n=0, nwalkers=32, use_mode
 ############################ TIMMER & KONIG ############################
 ########################################################################
     
-def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, plot=False):
-    """
-    Simulate a light curve with power-law noise from the methodology outlined in Timmer & Konig (1995).
+def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, taskid, n_sims, sim_index, plot=False):
 
-    Parameters:
-    duration (float): Total duration of the light curve in seconds.
-    tbin (float): Time binning (sampling interval) in seconds.
-    psd_model (str): Model to use for the PSD.
-    psd_params (array): Array of model parameters to pass to the PSD.
-    mean_obs (float): mean rate of the observed data to match simulations to
-    rms_obs (float): rms of the observed data to match simulations to
-    plot (bool): whether or not to plot the resulting light curve
-
-    Returns:
-    np.array: Simulated light curve.
-    """
     # number of samples
     N = int(duration / tbin)
 
@@ -491,15 +465,15 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     pos_freqs = all_freqs[all_freqs > 0] # exclude 0
 
     # compute gaussian distributed random numbers for the real and imaginary parts of the phase
-    np.random.seed(seed=np.random.randint(0,10000))
+    np.random.seed(seed = np.random.randint(0,10000) + taskid * n_sims + sim_index)
     rand_re = np.random.normal(size=pos_freqs.shape)
     rand_im = np.random.normal(size=pos_freqs.shape)
     rand_im[-1] = 0 # nyquist freq is real
     sim_spec = rand_re + 1j * rand_im
     if psd_model == 'powerlaw':
-        psd_shape = powerlaw(pos_freqs, psd_params[0], psd_params[1], 0)
+        psd_shape = powerlaw(pos_freqs, psd_params[0], psd_params[1], psd_params[2])
     elif psd_model == 'lorentzian':
-        psd_shape = lorentzian(pos_freqs, psd_params[0], psd_params[1], 0)
+        psd_shape = lorentzian(pos_freqs, psd_params[0], psd_params[1], psd_params[2])
     sim_spec = sim_spec * np.sqrt(0.5 * psd_shape) # for a more general power spectrum
     sim_spec[0] = 0 + 0j
 
@@ -511,16 +485,13 @@ def timmerkonig_sims(duration, tbin, psd_model, psd_params, mean_obs, rms_obs, p
     # inverse FFT to get the time series
     light_curve = np.fft.irfft(full_spec, n=N)
 
-    # scale to the observations
+    # scale to the observations - grab the mean and RMS from simulated light curves
     mean_sim = np.mean(light_curve)
     rms_sim = np.sqrt(np.sum((light_curve - mean_sim)**2) / (N - 1))
-    light_curve = light_curve * rms_obs / rms_sim # scale the rms
-    light_curve = (light_curve - mean_sim) + mean_obs 
-
-    # add noise, based on the sqrt of the constant white noise component from the original fit to the PSD
-    noise_max = np.sqrt(psd_params[2] / (2 * tbin)) # need to account for the power / freq, i.e. multiply by the nyquist freq
-    noise = np.random.normal(0, noise_max, size=len(light_curve))
-    light_curve = light_curve + noise
+    light_curve = light_curve - mean_sim # scale mean to 0
+    light_curve = light_curve * rms_obs / rms_sim # scale the rms to what we observe
+    light_curve = light_curve + mean_obs # scale to the observed mean
+    light_curve[light_curve < 0] = 0 # remove unphysical data points with ct rate < 0
 
     # times for plotting
     times = np.arange(0,duration,tbin)
@@ -545,6 +516,7 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
 
     # poisson noise
     lc_err = np.sqrt(lc * tbin)
+    lc_err[lc == 0] = np.median(lc_err)
 
     # maximum frequency that can be probed = nyquist = 1 / (2 * tbin)
     f_max = 1 / (2 * tbin)
@@ -605,6 +577,9 @@ def make_TK_psd(lc, tbin, psd_model, psd_params, n=0, plot=False):
 def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power_err=None, psd_model='powerlaw', psd_params=[1e-2, 1, 1], 
            nwalkers=32, nsteps=5500, nburn=500, plot=False, maxlike_init=True, SSE_input=0):
 
+    # number of random values to pull from MCMC 
+    n_rand = 10000
+
     # perform MLE 
     ndim = len(psd_params) # should work for either power law or lorentzian model
     if psd_model == 'powerlaw':
@@ -632,16 +607,17 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
     grid = np.linspace(f_min, f_max, 1000)
     
     # grab n_rand samples and pick out the median fit from the MCMC
-    n_rand = 100
+    rand_ints = np.random.randint(low=0, high=len(samples[:,0]), size=n_rand)
     fit = np.zeros((len(grid),n_rand))
     fit_binned = np.zeros((len(freq),n_rand))
     for i in range(n_rand):
+        j = rand_ints[i]
         if psd_model == 'powerlaw':
-            use_N0, use_b, use_c, = samples[i,:]
+            use_N0, use_b, use_c, = samples[j,:]
             fit[:,i] = powerlaw(grid, use_N0, use_b, use_c)
             fit_binned[:,i] = powerlaw(freq, use_N0, use_b, use_c)
         if psd_model == 'lorentzian':
-            use_R, use_delta, use_c = samples[i,:]
+            use_R, use_delta, use_c = samples[j,:]
             fit[:,i] = lorentzian(grid, use_R, use_delta, use_c)
             fit_binned[:,i] = lorentzian(freq, use_R, use_delta, use_c)
     med_fit = np.median(fit, axis=1)
@@ -661,7 +637,7 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
             os.mkdir(save_path+'save_TK_fits/')
 
         # not in log space
-        fig, ax = plt.subplots(figsize=(10,10))
+        fig, ax = plt.subplots()
         ax.plot(grid, med_fit, color='dodgerblue', lw=5, ls='--', label='Median Fit from MCMC')
         if not freq_err is None:
             ax.errorbar(freq, power, xerr=freq_err, yerr=power_err, fmt='o', ms=0, color='k', capsize=0, label='Simulated Data')
@@ -671,19 +647,20 @@ def fit_TK(ind, taskid, obs, emin, emax, tbin, freq, power, freq_err=None, power
         ax.set_yscale('log')
         ax.set_xlabel('Frequency [Hz]')
         ax.set_ylabel('Periodogram')
-        ax.legend(fontsize=24)
-        plt.savefig(save_path+'save_TK_fits/mcmc_fit_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight')
-        plt.close()
+        ax.legend()
+        ax.set_title('SSE Comp: '+str(SSE_input)+', SSE Simulated: '+str(np.round(SSE_TK,2)))
+        plt.savefig(save_path+'save_TK_fits/mcmc_fit_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight', dpi=50)
+        plt.close(fig)
 
-        # not in log space
-        fig, axs = plt.subplots(nrows=ndim, figsize=(10,15), gridspec_kw={'hspace':0, 'wspace':0})
-        for i in range(ndim):
-            ax = axs[i]
-            ax.plot(np.linspace(0,len(samples[:,i]),len(samples[:,i])), samples[:,i], 'k-', lw=0.1)
-            if i == (ndim-1):
-                ax.set_xlabel('Steps')
-        plt.savefig(save_path+'save_TK_fits/mcmc_convergence_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight')
-        plt.close()
+        # # not in log space
+        # fig, axs = plt.subplots(nrows=ndim, gridspec_kw={'hspace':0, 'wspace':0})
+        # for i in range(ndim):
+        #     ax = axs[i]
+        #     ax.plot(np.linspace(0,len(samples[:,i]),len(samples[:,i])), samples[:,i], 'k-', lw=0.1)
+        #     if i == (ndim-1):
+        #         ax.set_xlabel('Steps')
+        # plt.savefig(save_path+'save_TK_fits/mcmc_convergence_'+obs+'_'+str(emin)+'-'+str(emax)+'keV_'+str(tbin)+'s_'+psd_model+'_'+str(ind)+'_'+str(taskid)+'.png', bbox_inches='tight', dpi=50)
+        # plt.close(fig)
 
     return Rhat_max_TK, SSE_TK
 
@@ -720,7 +697,7 @@ def run_TK_sims_and_analysis(taskid, obs, data_path, emin, emax, tbin, n=0, n_si
             psd_params = [sim_R, sim_delta, sim_c]
 
         # run simulation and fit the new psd
-        lc = timmerkonig_sims(dur, tbin, psd_model, psd_params, mean, rms)
+        lc = timmerkonig_sims(dur, tbin, psd_model, psd_params, mean, rms, taskid=taskid, n_sims=n_sim, sim_index=i)
         freq, power = make_TK_psd(lc, tbin, psd_model, psd_params, plot=False)
         Rhat_TK, SSE_TK = fit_TK(i, taskid, obs, emin, emax, tbin, freq, power, psd_model=psd_model, psd_params=psd_params, plot=True, maxlike_init=maxlike_init, SSE_input=SSE_comp)
 
