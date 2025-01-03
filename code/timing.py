@@ -24,7 +24,7 @@ from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Om0=0.3)
 from scipy.stats import spearmanr, linregress
 import pylag
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 from scipy.stats import binned_statistic, chi2
 
 # set up plotting defaults
@@ -92,7 +92,7 @@ def make_psd(obs, data_path, emin, emax, tbin=20, n=10, tmin=None, tmax=None):
         data = hdu[1].data
         data = data[~np.isnan(data['RATE'])]
         time = data['TIME']-data['TIME'][0]
-        rate = data['RATE']
+        rate = data['RATE']#-data['BACKV']
         err = data['ERROR']
 
         if tmin is not None:
